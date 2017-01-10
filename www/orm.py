@@ -11,6 +11,7 @@ import aiomysql
 def log(sql, args=()):
     logging.info('SQL: %s' % sql)
 
+
 async def create_pool(loop, **kw):
     logging.info('create database connection pool...')
     global __pool
@@ -27,6 +28,14 @@ async def create_pool(loop, **kw):
         loop=loop
     )
 
+
+async def destroy_pool():
+    global __pool
+    if __pool is not None :
+        __pool.close()
+        await __pool.wait_closed()
+
+
 async def select(sql, args, size=None):
     log(sql, args)
     global __pool
@@ -39,7 +48,7 @@ async def select(sql, args, size=None):
                 rs = await cur.fetchall()
         logging.info('rows returned: %s' % len(rs))
         return rs
-
+        
 async def execute(sql, args, autocommit=True):
     log(sql)
     async with __pool.get() as conn:
@@ -177,6 +186,7 @@ class Model(dict, metaclass=ModelMetaclass):
                 setattr(self, key, value)
         return value
 
+
     @classmethod
     async def findAll(cls, where=None, args=None, **kw):
         ' find objects by where clause. '
@@ -204,6 +214,7 @@ class Model(dict, metaclass=ModelMetaclass):
         rs = await select(' '.join(sql), args)
         return [cls(**r) for r in rs]
 
+
     @classmethod
     async def findNumber(cls, selectField, where=None, args=None):
         ' find number by select and where. '
@@ -216,6 +227,7 @@ class Model(dict, metaclass=ModelMetaclass):
             return None
         return rs[0]['_num_']
 
+
     @classmethod
     async def find(cls, pk):
         ' find object by primary key. '
@@ -224,6 +236,7 @@ class Model(dict, metaclass=ModelMetaclass):
             return None
         return cls(**rs[0])
 
+  
     async def save(self):
         args = list(map(self.getValueOrDefault, self.__fields__))
         args.append(self.getValueOrDefault(self.__primary_key__))
@@ -231,6 +244,7 @@ class Model(dict, metaclass=ModelMetaclass):
         if rows != 1:
             logging.warn('failed to insert record: affected rows: %s' % rows)
 
+    
     async def update(self):
         args = list(map(self.getValue, self.__fields__))
         args.append(self.getValue(self.__primary_key__))
@@ -239,9 +253,12 @@ class Model(dict, metaclass=ModelMetaclass):
             logging.warn(
                 'failed to update by primary key: affected rows: %s' % rows)
 
+
     async def remove(self):
         args = [self.getValue(self.__primary_key__)]
         rows = await execute(self.__delete__, args)
         if rows != 1:
             logging.warn(
                 'failed to remove by primary key: affected rows: %s' % rows)
+
+
